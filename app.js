@@ -13,18 +13,24 @@ app.use(bodyParser.urlencoded({extended: true}));
 //ejs
 app.set('view engine', 'ejs');
 
-//Sessions
+//Cookies&Sessions
+//express-session
 const session = require('express-session');
+//passport & passport-local
 const passport = require('passport');
+//passport-local-mongoose
 const passportLocalMongoose = require('passport-local-mongoose');
 
+//set up session
 app.use(session({
   secret:"Our little secret.",
   resave: false,
   saveUninitialized: false
 }));
 
+//initialize passport
 app.use(passport.initialize());
+//use passport to mannage our sessions
 app.use(passport.session());
 
 //mongoose
@@ -34,7 +40,7 @@ mongoose.connect("mongodb://localhost:27017/userDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
-
+//solve deprecationWarning
 mongoose.set("useCreateIndex",true);
 
 const userSchema = new mongoose.Schema ({
@@ -42,6 +48,7 @@ const userSchema = new mongoose.Schema ({
   password:String
 });
 
+//set up userSchema to use passportLocalMongoose as a plugin
 userSchema.plugin(passportLocalMongoose);
 
 //userSchema.plugin(encrypt,{secret: process.env.SECRET, encryptedFields:["password"]});
@@ -55,8 +62,10 @@ userSchema.plugin(passportLocalMongoose);
 
 const User = new mongoose.model("User",userSchema);
 
+//use passportLocalMongoose to creat a local mongo strategy
+//The createStrategy is responsible to setup passport-local LocalStrategy with the correct options.
 passport.use(User.createStrategy());
-
+//serializeUser/deserializeUser functions.
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
@@ -106,11 +115,13 @@ app.post("/register",function(req,res){
   //     }
   //   })
   // });
+  //register user
   User.register({username:req.body.username},req.body.password, function(err,user){
     if(err){
       console.log(err);
       res.redirect("/register");
     }else{
+      //authenticate user using passport
       passport.authenticate("local")(req,res,function(){
         res.redirect("/secrets");
       })
